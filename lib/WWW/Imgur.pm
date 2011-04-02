@@ -6,7 +6,7 @@ use MIME::Base64;
 use LWP;
 use JSON;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 my $api_url = 'http://api.imgur.com/2';
 
@@ -30,6 +30,8 @@ sub new
     }
     return $self;
 }
+
+# Public.
 
 sub agent
 {
@@ -77,26 +79,34 @@ sub verbose
 
 sub read_image_file
 {
-    my ($file_name) = @_;
-    if (! -f $file_name) {
-        carp "Sorry, I can't find your image file '$file_name'";
-        return;
-    }
-    my $input;
-    if (! open $input, "<:raw", $file_name) {
-        carp "Sorry, I can't open your image file '$file_name' because $!";
-        return;
-    }
+    my ($image_path, $verbose) = @_;
     my $data;
-    {
-        local $/;
-        $data = <$input>;
+    if (ref $image_path eq 'SCALAR') {
+        $data = $$image_path;
     }
-    if (! close $input) {
-        croak "Can't close '$file_name': $!";
+    else {
+        if ($verbose) {
+            print "I am sending image data from a file '$image_path'.\n";
+        }
+        if (! -f $image_path) {
+            carp "Sorry, I can't find your image file '$image_path'";
+            return;
+        }
+        my $input;
+        if (! open $input, "<:raw", $image_path) {
+            carp "Sorry, I can't open your image file '$image_path' because $!";
+            return;
+        }
+        {
+            local $/;
+            $data = <$input>;
+        }
+        if (! close $input) {
+            croak "Can't close '$image_path': $!";
+        }
     }
     if (length $data == 0) {
-        carp "Your image file '$file_name' appears not to contain any data";
+        carp "Your image appears not to contain any data";
         return;
     }
     my $base_64_data = encode_base64 ($data);
@@ -109,7 +119,7 @@ sub upload
 {
     my ($self, $image_path, $options) = @_;
     if (! $image_path) {
-        carp "Please supply either a file name or a URL to upload";
+        carp "Please supply either a file name, a reference to image data, or a URL to upload";
         return;
     }
     my $image;
@@ -120,10 +130,7 @@ sub upload
         $image = $image_path;
     }
     else {
-        if ($self->verbose) {
-            print "I am sending image data from a file '$image_path'.\n";
-        }
-        $image = read_image_file ($image_path);
+        $image = read_image_file ($image_path, $self->verbose);
     }
     if (! $image) {
         carp "I am aborting the upload";
@@ -238,28 +245,55 @@ WWW::Imgur - upload images to imgur.com
     my $json = $imgur->upload ('fabulous.png')
         or die "Upload failed";
     # Delete an image
-    $imgur->delete ('DelETEhasH');
+    $imgur->delete ('DelETEhasH')
         or die "Delete failed";
 
 WWW::Imgur provides an interface to the image uploading and image
 deletion APIs of the L<http://imgur.com/> image sharing website.
 
+This module uses the version 2 API with the JSON option. See
+L<http://api.imgur.com/> for details of the Imgur API.
+
 =head1 METHODS
 
 =head2 new
 
+    my $imgur = WWW::Imgur->new ();
+
     my $imgur = WWW::Imgur->new ({key => 'YoUrApIkEy',
                                   verbose => 1});
 
-Create a new object.
+Create a new object. You can supply an argument of a hash reference
+containing the following keys:
+
+=over
+
+=item key => 'YoUrApIkEy'
+
+Set the API key. Equivalent to calling the L</key> method with an argument.
+
+=item verbose => 1
+
+Turn on or off non-error messages from the module. Equivalent to
+calling the L</verbosity> method with an argument.
+
+=item agent => 'Incredible User Agent'.
+
+This option sets the user agent string. It is equivalent to calling
+the L</agent> method with an argument.
+
+=back
 
 =head2 key
 
     $imgur->key ('MyApiKEy');
 
-Set the API key. You can get an API key at
+This method sets the value of the API key to whatever you give as an
+argument. You can get an API key at
 L<http://imgur.com/register/api_anon> for an anonymous application, or
-L<http://imgur.com/register/api_oauth> for a registered application.
+L<http://imgur.com/register/api_oauth> for a registered
+application. However, WWW::Imgur doesn't handle the OAuth
+interface. See L</No OAuth>.
 
 =head2 verbosity
 
@@ -273,6 +307,7 @@ is doing. Give a false or empty value to stop the messages.
 
 =head2 upload
 
+    $json = $imgur->upload (\$image_data);
     $json = $imgur->upload ('fabulous.png');
     $json = $imgur->upload ('http://www.example.com/fabulous.png');
 
@@ -281,6 +316,32 @@ message from imgur.com as plain text (it does not parse this message
 into a Perl object). If it fails, it prints an error message on the
 standard error and returns an undefined value.
 
+The argument can either be 
+
+=over
+
+=item actual image data,
+
+in which case you should pass it as a scalar reference, as in
+C<\$image_data> in the first line of the example above,
+
+=item the file name of an image file,
+
+as in C<'fabulous.png'> in the second line of the example above, or 
+
+=item the URL of an image,
+
+as in C<'http://www.example.com/fabulous.png'> in the third line of
+the example above. Imgur's documentation refers to this as "Image
+Sideloading". See L<http://api.imgur.com/resources_anon#sideloading>.
+
+The URL is passed to imgur.com, so it needs to be one which
+is accessible to the imgur.com server, not a local or private one.
+
+=back
+
+WWW::Imgur does not parse the JSON for you. See 
+L</No parsing of JSON>.
 If you want to view the contents of C<$json>, try, for example
 
     use JSON;
@@ -288,41 +349,116 @@ If you want to view the contents of C<$json>, try, for example
     my $json = $imgur->upload ('nuts.png');
     print Dumper (json_decode ($json));
 
-See examples/upload.pl for a full example.
+See the example in the file C<examples/upload.pl> of the WWW::Imgur
+distribution for a full example.
 
-There is another argument to upload where you can add more
-options. Currently there are two options, "caption" and "title".
+There is an optional second argument to the upload method. You pass a
+hash reference containing options. Currently there are two options,
+"caption" and "title".
 
     my $json = $imgur->upload ('sharon-stone.jpeg',
                            {
-                               caption => 'Sharon Stone stoned again',
+                               caption => 'Sharon Stone is a stone gas',
                                title => 'Sharon Stone gathers no moss',
                            });
 
 However, although the values you send are sent back in the JSON
-response you get from the site, these don't appear to do anything.
+response you get from the site, these don't seem to actually show up
+anywhere on the Imgur website itself.
 
 =head2 delete
 
      $imgur->delete ('ImageDeleteHASH');
 
-Delete an image from imgur.com. You need a key called the
-"deletehash", which is one of the parts of the JSON response from the
-L</upload> method.
+This method deletes an image from imgur.com. It takes one argument, a
+key called the "deletehash", which is one of the parts of the JSON
+response from the L</upload> method.
 
-If you try to delete an image which has already been deleted, it seems
-to respond with a "400 Bad Request" error.
+If it succeeds, it returns the message from Imgur. If it fails, it
+prints a message on STDERR and returns an undefined value.
+
+If you try to delete an image which has already been deleted, Imgur
+seems to respond with a "400 Bad Request" error.
 
 =head2 agent
 
      $imgur->agent ('MyScript.pl');
 
-Set the user agent string of the agent which makes the request. The
-default value of the user agent string is "WWW::Imgur".
+Given an argument, this sets the user agent string of the agent which
+makes the request. The default value of the user agent string is
+"WWW::Imgur".
+
+Without an argument, it returns what the user agent string is
+currently set to.
+
+As far as I know, Imgur does not make any use of what you set the user
+agent string to. However I think it's wise to set it to something
+which they can recognize if need be.
+
+=head1 DEPENDENCIES
+
+This module uses L<MIME::Base64> to encode the image data to send to
+Imgur, L<JSON> to decode the return message in the L</delete> method,
+L<LWP> to communicate with imgur.com, and L<Carp> to report errors.
+
+=head1 BUGS
+
+Although the module basically does everything I need it to do (upload
+small 30,000 byte PNG files to Imgur and delete them), the following
+features are not implemented.
+
+=over
+
+=item No OAuth
+
+There is no support for the OAuth interface for registered
+applications. See L<http://api.imgur.com/resources_auth>.
+
+=item No tests
+
+The test suite doesn't do anything except test this module for
+compilation. I'm not willing to apply to Imgur for an API key for
+testing this module which may then go on to be abused by someone, and
+I'm also not willing to write tests for the module which rely on being
+connected to the internet. Please get an API key and then use the
+example scripts to test the module to make sure it works correctly
+against the actual Imgur API.
+
+=item No XML
+
+There is no support for the XML API. It would be quite easy to add
+this to the module if you need it.
+
+=item No image stats
+
+The Imgur API contains a method to get information about an image, but
+this module doesn't have a way to access that. See
+L<http://api.imgur.com/resources_anon#image_hash>.
+
+=item No parsing of JSON
+
+The successful return value of the L</upload> method is the JSON text
+which Imgur sends back to you, unparsed. I did it this way so that the
+application I wrote this for could just send this JSON text to a
+JavaScript program, which then reloads the image. Thus there was no
+point in parsing the JSON output. However, it would be easy to add
+an option to WWW::Imgur to parse the JSON.
+
+=back
+
+If you are using this module and are interested in adding some of the
+above features, please let me know. I haven't set up a repository or a
+mailing list for the module. Setting these up would depend on the
+level of user interest.
 
 =head1 SEE ALSO
 
-L<Image::Imgur> is an alternative upload module for imgur.com.
+L<Image::Imgur> is an alternative module for imgur.com. It uses the
+XML version of the API rather than the JSON one which WWW::Imgur uses,
+and it depends on the L<Moose> module. It uses an older version of the
+Imgur API. The version on CPAN at the time of writing (22 March 2011)
+has a method to upload image files, but does not have one to delete
+images or to upload image data from memory.
 
 =head1 AUTHOR
 
