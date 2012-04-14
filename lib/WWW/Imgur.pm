@@ -6,7 +6,7 @@ use MIME::Base64;
 use LWP;
 use JSON;
 
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 
 my $api_url = 'http://api.imgur.com/2';
 
