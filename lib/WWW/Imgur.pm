@@ -6,7 +6,9 @@ use MIME::Base64;
 use LWP;
 use JSON;
 
-our $VERSION = 0.03;
+our $VERSION = 0.04;
+
+# The imgur API url used.
 
 my $api_url = 'http://api.imgur.com/2';
 
@@ -235,7 +237,7 @@ __END__
 
 =head1 NAME
 
-WWW::Imgur - upload images to imgur.com
+WWW::Imgur - upload images to imgur.com via deprecated version 2 API
 
 =head1 SYNOPSIS
 
@@ -248,11 +250,15 @@ WWW::Imgur - upload images to imgur.com
     $imgur->delete ('DelETEhasH')
         or die "Delete failed";
 
-WWW::Imgur provides an interface to the image uploading and image
-deletion APIs of the L<http://imgur.com/> image sharing website.
+=head1 DESCRIPTION
 
-This module uses the version 2 API with the JSON option. See
-L<http://api.imgur.com/> for details of the Imgur API.
+WWW::Imgur provides an interface to the deprecated version 2 image
+uploading and image deletion APIs of the L<http://imgur.com/> image
+sharing website. See L</API version 2 only> below.
+
+See L<http://api.imgur.com/> for details of the Imgur API. The
+documentation for the version 2 API which this module uses has been
+removed from the website.
 
 =head1 METHODS
 
@@ -332,8 +338,8 @@ as in C<'fabulous.png'> in the second line of the example above, or
 =item the URL of an image,
 
 as in C<'http://www.example.com/fabulous.png'> in the third line of
-the example above. Imgur's documentation refers to this as "Image
-Sideloading". See L<http://api.imgur.com/resources_anon#sideloading>.
+the example above. Imgur's documentation referred to this as "Image
+Sideloading".
 
 The URL is passed to imgur.com, so it needs to be one which
 is accessible to the imgur.com server, not a local or private one.
@@ -391,10 +397,6 @@ makes the request. The default value of the user agent string is
 Without an argument, it returns what the user agent string is
 currently set to.
 
-As far as I know, Imgur does not make any use of what you set the user
-agent string to. However I think it's wise to set it to something
-which they can recognize if need be.
-
 =head1 DEPENDENCIES
 
 This module uses L<MIME::Base64> to encode the image data to send to
@@ -403,53 +405,48 @@ L<LWP> to communicate with imgur.com, and L<Carp> to report errors.
 
 =head1 BUGS
 
-Although the module basically does everything I need it to do (upload
-small 30,000 byte PNG files to Imgur and delete them), the following
-features are not implemented.
+The following features are not implemented.
 
 =over
 
 =item No OAuth
 
 There is no support for the OAuth interface for registered
-applications. See L<http://api.imgur.com/resources_auth>.
+applications.
 
 =item No tests
 
 The test suite doesn't do anything except test this module for
-compilation. I'm not willing to apply to Imgur for an API key for
-testing this module which may then go on to be abused by someone, and
-I'm also not willing to write tests for the module which rely on being
-connected to the internet. Please get an API key and then use the
-example scripts to test the module to make sure it works correctly
-against the actual Imgur API.
+compilation. Please get an API key and then use the example scripts to
+test the module to make sure it works correctly against the actual
+Imgur API.
 
 =item No XML
 
-There is no support for the XML API. It would be quite easy to add
-this to the module if you need it.
+There is no support for the XML API.
 
 =item No image stats
 
 The Imgur API contains a method to get information about an image, but
-this module doesn't have a way to access that. See
-L<http://api.imgur.com/resources_anon#image_hash>.
+this module doesn't have a way to access that.
 
 =item No parsing of JSON
 
 The successful return value of the L</upload> method is the JSON text
-which Imgur sends back to you, unparsed. I did it this way so that the
-application I wrote this for could just send this JSON text to a
-JavaScript program, which then reloads the image. Thus there was no
-point in parsing the JSON output. However, it would be easy to add
-an option to WWW::Imgur to parse the JSON.
+which Imgur sends back, unparsed.
+
+=item API version 2 only
+
+This module is for the now-deprecated imgur version 2 API. The current
+version of imgur's API as of December 2012 is version 3. The author of
+WWW::Imgur does not intend to go on using the imgur service due to
+changes in terms and conditions. Those who would like to upgrade this
+to the version 3 API are requested to contact the current author and
+take over the module's development.
+
+See also L<http://blogs.perl.org/users/ben_bullock/2012/12/notice---wwwimgur-end-of-life.html>.
 
 =back
-
-If you are using this module and are interested in adding some of the
-above features, please let me know. I haven't set up a repository or a
-mailing list for the module. Setting these up would depend on the
-level of user interest.
 
 =head1 SEE ALSO
 

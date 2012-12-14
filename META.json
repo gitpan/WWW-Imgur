@@ -1,12 +1,12 @@
 {
-   "abstract" : "upload images to imgur.com",
+   "abstract" : "upload images to imgur.com via deprecated version 2 API",
    "author" : [
       "unknown"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.120630",
+   "generated_by" : "ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112150",
    "license" : [
-      "unknown"
+      "perl_5"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
@@ -22,23 +22,31 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "0"
+            "ExtUtils::MakeMaker" : 0
          }
       },
       "configure" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : "0"
+            "ExtUtils::MakeMaker" : 0
          }
       },
       "runtime" : {
          "requires" : {
-            "Carp" : "0",
-            "JSON" : "0",
-            "LWP" : "0",
-            "MIME::Base64" : "0"
+            "Carp" : 0,
+            "JSON" : 0,
+            "LWP" : 0,
+            "MIME::Base64" : 0
          }
       }
    },
    "release_status" : "stable",
-   "version" : "0.03"
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/benkasminbullock/WWW-Imgur/issues"
+      },
+      "repository" : {
+         "url" : "https://github.com/benkasminbullock/WWW-Imgur"
+      }
+   },
+   "version" : "0.04"
 }
